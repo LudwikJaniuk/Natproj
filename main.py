@@ -15,11 +15,14 @@ def parseRawInput(s):
 	return lines
 
 def makeAtoms(lines):
-	return [Atom("C", np.array([33, 4.0, 0.001]))]
+	return [Atom(words[0], vector3(words[1], words[2], words[3])) for words in lines]
 
 def textAtoms(atoms):
 	result = [str(atom) for atom in atoms]
 	return "\n".join(result)
+
+def vector3(x, y ,z):
+	return np.array([float(x), float(y), float(z)])
 
 class Atom:
 	""" An atom, with its name and position """
