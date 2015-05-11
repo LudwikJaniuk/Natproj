@@ -1,1 +1,3 @@
-wselkuhvvdaljajlojivca
+C 12 43 1.043434
+D 12 53 1.043434
+C 12 43 1.043433
