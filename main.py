@@ -12,15 +12,16 @@ def main():
 		print("")
 		global atoms
 		atoms = makeAtoms(lines)
-		print("")
 		crunchAtoms()
 		result = textAtoms(atoms)
 		print("\nResult:")
 		print(result)
 
-
 def crunchAtoms():
+	pairs, threes = atomGroups()
+	print("\nA total of ", len(pairs), "pairs; ", len(threes), " bound triplets")
 
+def atomGroups():
 	def pairs(l):
 		if(len(l) > 1):
 			head, *tail = l
@@ -64,12 +65,11 @@ def crunchAtoms():
 		return [three(t) for t in ts]
 
 	allPairs = pairs(atoms)
+
+	print("\nPairs:")
 	printPairs(allPairs)
 
 	boundPairs = list(filter(isBound_p, allPairs))
-	print("\nBound pairs: ")
-	printPairs(boundPairs)
-
 	possibleBoundTriples = pairs(boundPairs)
 	boundTriples = list(filter(validTriple, possibleBoundTriples))
 	boundThrees = threes(boundTriples)
@@ -77,8 +77,7 @@ def crunchAtoms():
 	print("\nBound Threes: ")
 	printThrees(boundThrees)
 
-
-
+	return allPairs, boundThrees
 
 def isBound_p(p):
 	return isBound(*p)
@@ -88,7 +87,6 @@ def isBound(a, b):
 
 def dist(a, b):
 	return np.linalg.norm(b.pos - a.pos)
-
 
 def parseRawInput(s):
 	lines = s.split("\n")
@@ -105,6 +103,10 @@ def makeAtoms(lines):
 def textAtoms(atoms):
 	result = [str(atom) for atom in atoms]
 	return "\n".join(result)
+
+def lennard_jones(a, b):
+	r = dist(a, b)
+	rOpt, E = pairProps(a, b)
 
 def vector3(x, y ,z):
 	return np.array([float(x), float(y), float(z)])
@@ -133,11 +135,5 @@ class Atom:
 
 	def __str__(self):
 		return self.name + " " + str(self.pos);
-
-
-
-
-
-
 
 main()
