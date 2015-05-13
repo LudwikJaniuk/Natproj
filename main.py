@@ -2,7 +2,9 @@ import numpy as np
 
 atoms = []
 bindingTreshold = 1.1
-
+step = 0.001
+pairs = []
+threes = []
 
 
 def main():
@@ -18,25 +20,73 @@ def main():
 		print(result)
 
 def crunchAtoms():
-	pairs, threes = atomGroups()
+	atomGroups()
 	print("\nA total of ", len(pairs), "pairs; ", len(threes), " bound triplets")
 
-	#WIP
-	# for pair in pairs:
-	# 	lj = lj_deriv(pair)
-	# 	a, b = pair
-	# 	aDir = b - a
-	# 	bDir = -aDir
+	for _ in range(1000):
+		simulate()
+		print("=========")
+
+def simulate():
+	clearForces()
+	applyLJForces()
+	applyAngularForces()
+	sumForces()
+	moveAtoms()
+	printInfo()
+
+
+def moveAtoms():
+	for atom in atoms:
+		atom.pos += atom.force * step
+
+def printInfo():
+	for atom in atoms:
+		print("\n", atom)
+		for force in atom.forces:
+			print(force, "Mag: ", np.linalg.norm(force))
+		print("Total: ", atom.force, np.linalg.norm(atom.force))
+
+def clearForces():
+	for atom in atoms:
+		atom.forces = []
+
+def sumForces():
+	for atom in atoms:
+		atom.force = sum(atom.forces)
+
+def applyAngularForces():
+	pass
+
+def applyLJForces():
+	global pairs
+	for pair in pairs:
+		lj = LJ_deriv(pair)
+		a, b = pair
+		aDir = b.pos - a.pos
+		bDir = -aDir
+		aDir *= lj
+		bDir *= lj
+
+		# print(a, b)
+		# print(len(a.forces), len(b.forces))
+		a.forces.append(aDir)
+		# print(len(a.forces), len(b.forces))
+		b.forces.append(bDir)
+		# print(len(a.forces), len(b.forces), "\n")
 
 
 
 
 def atomGroups():
-	def pairs(l):
+	global pairs
+	global threes
+
+	def pair(l):
 		if(len(l) > 1):
 			head, *tail = l
 			firstPairs = [(head, other) for other in tail]
-			return firstPairs + pairs(tail)
+			return firstPairs + pair(tail)
 		else:
 			return []
 
@@ -74,20 +124,21 @@ def atomGroups():
 	def threes(ts):
 		return [three(t) for t in ts]
 
-	allPairs = pairs(atoms)
+	allPairs = pair(atoms)
 
 	print("\nPairs:")
 	printPairs(allPairs)
 
 	boundPairs = list(filter(isBound_p, allPairs))
-	possibleBoundTriples = pairs(boundPairs)
+	possibleBoundTriples = pair(boundPairs)
 	boundTriples = list(filter(validTriple, possibleBoundTriples))
 	boundThrees = threes(boundTriples)
 
 	print("\nBound Threes: ")
 	printThrees(boundThrees)
 
-	return allPairs, boundThrees
+	pairs = allPairs
+	threes = boundThrees
 
 def isBound_p(p):
 	return isBound(*p)
@@ -132,6 +183,7 @@ class Atom:
 	name = "X"
 	pos = np.array([0, 0, 0])
 	forces = []
+	force = None
 	def clearForces(self):
 		self.forces = []
 
@@ -142,9 +194,11 @@ class Atom:
 		_name = _name.upper()
 		assert(_name in Atom.atoms)
 		assert(len(_pos) == 3)
+
 		
 		self.name = _name.upper()
 		self.pos = _pos
+		self.forces = []
 
 		print("Created Atom: " + Atom.names[self.name] + " at pos: " + str(self.pos))
 
@@ -168,12 +222,22 @@ best_dist = {
 	"HO": 0.946065
 }
 
-def LJ_potential(a, r):
+def pairName(p):
+	a, b = p
+	nm = a.name + b.name
+	result = "".join(sorted(nm))
+	return result
+
+def LJ_potential(p):
+	a = pairName(p)
+	r = dist(*p)
 	rm = best_dist[a]
 	E = well_depth[a]
 	return E*((rm/r)**12 - 2*(rm/r)**6)
 
-def LJ_deriv(a, r):
+def LJ_deriv(p):
+	a = pairName(p)
+	r = dist(*p)
 	rm = best_dist[a]
 	E = well_depth[a]
 	return (12 * E * rm**6 * (r**6 - rm**6)) / r**13
