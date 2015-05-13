@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 
-iterations = 100
+iterations = 1000
 atoms = []
 bindingTreshold = 1.1
 step = 0.01
@@ -63,7 +63,8 @@ def simulate():
 	# printInfo()
 
 def logify(n):
-	return math.log(abs(n)+math.e)*(n/abs(n))
+	# Why does adding e not work better?
+	return math.log(abs(n)+1)*(n/abs(n))
 
 def printInfo():
 	for atom in atoms:
