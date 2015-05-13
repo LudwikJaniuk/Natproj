@@ -21,6 +21,16 @@ def crunchAtoms():
 	pairs, threes = atomGroups()
 	print("\nA total of ", len(pairs), "pairs; ", len(threes), " bound triplets")
 
+	#WIP
+	# for pair in pairs:
+	# 	lj = lj_deriv(pair)
+	# 	a, b = pair
+	# 	aDir = b - a
+	# 	bDir = -aDir
+
+
+
+
 def atomGroups():
 	def pairs(l):
 		if(len(l) > 1):
@@ -119,9 +129,14 @@ class Atom:
 		"H": "Hydrogen", 
 		"O": "Oxygen", 
 		"X": "Invalid" }
-
 	name = "X"
 	pos = np.array([0, 0, 0])
+	forces = []
+	def clearForces(self):
+		self.forces = []
+
+	def norm(self):
+		return self.pos/np.linalg.norm(self.pos)
 
 	def __init__(self, _name, _pos):
 		_name = _name.upper()
@@ -135,5 +150,33 @@ class Atom:
 
 	def __str__(self):
 		return self.name + " " + str(self.pos);
+
+	# Energi, i hartree
+well_depth = {
+	"CH": 0.1332,
+	"CO": 0.0921590301,
+	"CC": 0.1433381031,
+	"HO": 0.1107685941
+}
+
+# Avstånd, i ångström
+best_dist = {
+	"HH": 0.731597,
+	"CH": 1.080454,
+	"CC": 1.513910667,
+	"CO": 1.428491,
+	"HO": 0.946065
+}
+
+def LJ_potential(a, r):
+	rm = best_dist[a]
+	E = well_depth[a]
+	return E*((rm/r)**12 - 2*(rm/r)**6)
+
+def LJ_deriv(a, r):
+	rm = best_dist[a]
+	E = well_depth[a]
+	return (12 * E * rm**6 * (r**6 - rm**6)) / r**13
+
 
 main()
