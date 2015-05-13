@@ -1,31 +1,55 @@
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
 import numpy as np
 
 atoms = []
 bindingTreshold = 1.1
-step = 0.001
+step = 0.01
 pairs = []
 threes = []
 
 
 def main():
+	s = ""
 	with open("data.txt", "r") as f:
 		s = f.read()
-		lines = parseRawInput(s)
-		print("")
-		global atoms
-		atoms = makeAtoms(lines)
-		crunchAtoms()
-		result = textAtoms(atoms)
-		print("\nResult:")
-		print(result)
+	lines = parseRawInput(s)
+	print("")
+	global atoms
+	atoms = makeAtoms(lines)
+	crunchAtoms()
+
+	result = textAtoms(atoms)
+	print("\nResult:")
+	print(result)
+
+	print("\nPairs:")
+	printPairs(pairs)
+
+	plotAtoms()
+
+def plotAtoms():
+	fig = plt.figure()
+	ax = fig.add_subplot(111, projection='3d')
+
+	ps = [a.pos for a in atoms]
+	xs, ys, zs = zip(*ps)
+
+	ax.scatter(xs, ys, zs, c='r', marker='o')
+
+	# ax.set_xlabel('X Label')
+	# ax.set_ylabel('Y Label')
+	# ax.set_zlabel('Z Label')
+
+	plt.show()
 
 def crunchAtoms():
 	atomGroups()
 	print("\nA total of ", len(pairs), "pairs; ", len(threes), " bound triplets")
 
-	for _ in range(1000):
+	for _ in range(10000):
 		simulate()
-		print("=========")
+
 
 def simulate():
 	clearForces()
@@ -33,7 +57,7 @@ def simulate():
 	applyAngularForces()
 	sumForces()
 	moveAtoms()
-	printInfo()
+	# printInfo()
 
 
 def moveAtoms():
@@ -76,53 +100,53 @@ def applyLJForces():
 		# print(len(a.forces), len(b.forces), "\n")
 
 
+def pair(l):
+	if(len(l) > 1):
+		head, *tail = l
+		firstPairs = [(head, other) for other in tail]
+		return firstPairs + pair(tail)
+	else:
+		return []
 
+def strPair(p):
+	fst, snd = p
+	return str(fst.name) + "=="  + str(snd.name) + " Dist: " + str(dist(fst, snd))
+
+def strThree(th):
+	a, c, b = th
+	return a.name + "--" + c.name + "--" + b.name
+
+def printThrees(ths):
+	stringed = [strThree(three) for three in ths]
+	print(*stringed, sep="\n")
+
+def validTriple(t):
+	(a, b), snd = t
+	return a in snd or b in snd
+
+def three(t):
+	(a, b), (c, d) = t
+	if a == c:
+		return (b, a, d)
+	if a == d:
+		return (b, a, c)
+	if b == c:
+		return (a, b, d)
+	if b == d:
+		return (a, b, c)
+
+def threes(ts):
+	return [three(t) for t in ts]
+
+def printPairs(ps):
+	stringed = [strPair(pair) for pair in ps]
+	print(*stringed, sep="\n")
 
 def atomGroups():
 	global pairs
 	global threes
 
-	def pair(l):
-		if(len(l) > 1):
-			head, *tail = l
-			firstPairs = [(head, other) for other in tail]
-			return firstPairs + pair(tail)
-		else:
-			return []
-
-	def strPair(p):
-		fst, snd = p
-		return str(fst.name) + "=="  + str(snd.name) + " Dist: " + str(dist(fst, snd))
-
-	def strThree(th):
-		a, c, b = th
-		return a.name + "--" + c.name + "--" + b.name
-
-	def printPairs(ps):
-		stringed = [strPair(pair) for pair in ps]
-		print(*stringed, sep="\n")
-
-	def printThrees(ths):
-		stringed = [strThree(three) for three in ths]
-		print(*stringed, sep="\n")
-
-	def validTriple(t):
-		(a, b), snd = t
-		return a in snd or b in snd
-
-	def three(t):
-		(a, b), (c, d) = t
-		if a == c:
-			return (b, a, d)
-		if a == d:
-			return (b, a, c)
-		if b == c:
-			return (a, b, d)
-		if b == d:
-			return (a, b, c)
-
-	def threes(ts):
-		return [three(t) for t in ts]
+	
 
 	allPairs = pair(atoms)
 
@@ -162,7 +186,7 @@ def makeAtoms(lines):
 	return result
 
 def textAtoms(atoms):
-	result = [str(atom) for atom in atoms]
+	result = [str(atom) + " " + str(np.linalg.norm(atom.force)) for atom in atoms]
 	return "\n".join(result)
 
 def lennard_jones(a, b):
