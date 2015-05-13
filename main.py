@@ -1,7 +1,9 @@
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import numpy as np
+import math
 
+iterations = 100
 atoms = []
 bindingTreshold = 1.1
 step = 0.01
@@ -47,9 +49,8 @@ def crunchAtoms():
 	atomGroups()
 	print("\nA total of ", len(pairs), "pairs; ", len(threes), " bound triplets")
 
-	for _ in range(10000):
+	for _ in range(iterations):
 		simulate()
-
 
 def simulate():
 	clearForces()
@@ -57,12 +58,12 @@ def simulate():
 	applyAngularForces()
 	sumForces()
 	moveAtoms()
+	# printPairs(pairs)
+	# print("")
 	# printInfo()
 
-
-def moveAtoms():
-	for atom in atoms:
-		atom.pos += atom.force * step
+def logify(n):
+	return math.log(abs(n)+math.e)*(n/abs(n))
 
 def printInfo():
 	for atom in atoms:
@@ -79,18 +80,16 @@ def sumForces():
 	for atom in atoms:
 		atom.force = sum(atom.forces)
 
-def applyAngularForces():
-	pass
-
 def applyLJForces():
 	global pairs
 	for pair in pairs:
 		lj = LJ_deriv(pair)
 		a, b = pair
 		aDir = b.pos - a.pos
+		# A direct approach can cause crazy jumps
+		# aDir *= lj 
+		aDir *= logify(lj)
 		bDir = -aDir
-		aDir *= lj
-		bDir *= lj
 
 		# print(a, b)
 		# print(len(a.forces), len(b.forces))
@@ -99,6 +98,13 @@ def applyLJForces():
 		b.forces.append(bDir)
 		# print(len(a.forces), len(b.forces), "\n")
 
+def applyAngularForces():
+	pass
+
+def moveAtoms():
+	for atom in atoms:
+		print(atom.pos, atom.force)
+		atom.pos += atom.force * step
 
 def pair(l):
 	if(len(l) > 1):
@@ -145,8 +151,6 @@ def printPairs(ps):
 def atomGroups():
 	global pairs
 	global threes
-
-	
 
 	allPairs = pair(atoms)
 
@@ -219,7 +223,6 @@ class Atom:
 		assert(_name in Atom.atoms)
 		assert(len(_pos) == 3)
 
-		
 		self.name = _name.upper()
 		self.pos = _pos
 		self.forces = []
