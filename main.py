@@ -55,6 +55,7 @@ def crunchAtoms():
 def simulate():
 	clearForces()
 	applyLJForces()
+	makeThrees()
 	applyAngularForces()
 	sumForces()
 	moveAtoms()
@@ -63,7 +64,11 @@ def simulate():
 	# printInfo()
 
 def logify(n):
-	# Why does adding e not work better?
+	# Why does adding e not work better? SOLVED
+	# Now I know. log(e) = 1, but log(1) = 0.
+	# So in adding e, we'd be setting out lowest value at 1
+	# But adding 1, we set it at 0.
+	# Which is much better.
 	return math.log(abs(n)+1)*(n/abs(n))
 
 def printInfo():
@@ -100,7 +105,19 @@ def applyLJForces():
 		# print(len(a.forces), len(b.forces), "\n")
 
 def applyAngularForces():
-	pass
+	for three in threes:
+		a, _, b = three
+		d = angle_deriv(three)
+		d = logify(d)
+
+		aDir = b.pos - a.pos
+		aDir *= logify(d)
+		bDir = -aDir
+
+		a.forces.append(aDir)
+		b.forces.append(bDir)
+
+
 
 def moveAtoms():
 	for atom in atoms:
@@ -142,7 +159,7 @@ def three(t):
 	if b == d:
 		return (a, b, c)
 
-def threes(ts):
+def toThrees(ts):
 	return [three(t) for t in ts]
 
 def printPairs(ps):
@@ -151,29 +168,26 @@ def printPairs(ps):
 
 def atomGroups():
 	global pairs
+
+	pairs = pair(atoms)
+	makeThrees()
+
+def makeThrees():
 	global threes
 
-	allPairs = pair(atoms)
-
-	print("\nPairs:")
-	printPairs(allPairs)
-
-	boundPairs = list(filter(isBound_p, allPairs))
+	boundPairs = list(filter(isBound_p, pairs))
 	possibleBoundTriples = pair(boundPairs)
 	boundTriples = list(filter(validTriple, possibleBoundTriples))
-	boundThrees = threes(boundTriples)
+	boundThrees = toThrees(boundTriples)
 
 	print("\nBound Threes: ")
 	printThrees(boundThrees)
 
-	pairs = allPairs
 	threes = boundThrees
 
 def isBound_p(p):
-	return isBound(*p)
-
-def isBound(a, b):
-	return dist(a, b) < bindingTreshold
+	a, b = p
+	return dist(a, b) < bind_treshold[pairName(p)]
 
 def dist(a, b):
 	return np.linalg.norm(b.pos - a.pos)
@@ -194,12 +208,10 @@ def textAtoms(atoms):
 	result = [str(atom) + " " + str(np.linalg.norm(atom.force)) for atom in atoms]
 	return "\n".join(result)
 
-def lennard_jones(a, b):
-	r = dist(a, b)
-	rOpt, E = pairProps(a, b)
+# def lennard_jones(a, b):
+# 	r = dist(a, b)
+# 	rOpt, E = pairProps(a, b)
 
-def vector3(x, y ,z):
-	return np.array([float(x), float(y), float(z)])
 
 class Atom:
 	""" An atom, with its name and position """
@@ -216,8 +228,8 @@ class Atom:
 	def clearForces(self):
 		self.forces = []
 
-	def norm(self):
-		return self.pos/np.linalg.norm(self.pos)
+	# def norm(self):
+	# 	return self.pos/np.linalg.norm(self.pos)
 
 	def __init__(self, _name, _pos):
 		_name = _name.upper()
@@ -250,11 +262,44 @@ best_dist = {
 	"HO": 0.946065
 }
 
+# Avstånd, i ångström
+bind_treshold = {
+	"HH": -1.0973955,
+	"CH": -1.620681,
+	"CC": 2.270866,
+	"CO": -2.1427365,
+	"HO": -1.4190975
+}
+
+three_der_a = {
+	"HCH": 0.000070322,
+	"CCC": 0.000111,
+	"HOH": 0.000073,
+	"OCO": 0.00005400
+}
+
+three_der_b = {
+	"HCH": -0.0077106,
+	"CCC": -0.012611,
+	"HOH": -0.008059,
+	"OCO": -0.009721
+}
+
+# UTIL FUNCTIONS
+
+def vector3(x, y ,z):
+	return np.array([float(x), float(y), float(z)])
+
 def pairName(p):
 	a, b = p
 	nm = a.name + b.name
 	result = "".join(sorted(nm))
 	return result
+
+def threeName(t):
+	a, c, b = t
+	sides = pairName((a, b))
+	return sides[0] + c.name + sides[1]
 
 def LJ_potential(p):
 	a = pairName(p)
@@ -269,6 +314,49 @@ def LJ_deriv(p):
 	rm = best_dist[a]
 	E = well_depth[a]
 	return (12 * E * rm**6 * (r**6 - rm**6)) / r**13
+
+def three_angle(t):
+	a, c, b = t
+	a = a.pos
+	b = b.pos
+	c = c.pos
+	v1 = a - c
+	v2 = b - c
+	return math.degrees(angle_between(v1, v2))
+
+def angle_deriv(t):
+	nm = threeName(t)
+	a = three_der_a[nm]
+	b = three_der_b[nm]
+	x = three_angle(t)
+	return a*x + b
+
+
+# SRC: http://stackoverflow.com/questions/2827393/angles-between-two-n-dimensional-vectors-in-python
+def unit_vector(vector):
+    """ Returns the unit vector of the vector.  """
+    return vector / np.linalg.norm(vector)
+
+# SRC: http://stackoverflow.com/questions/2827393/angles-between-two-n-dimensional-vectors-in-python
+def angle_between(v1, v2):
+    """ Returns the angle in radians between vectors 'v1' and 'v2'::
+
+            >>> angle_between((1, 0, 0), (0, 1, 0))
+            1.5707963267948966
+            >>> angle_between((1, 0, 0), (1, 0, 0))
+            0.0
+            >>> angle_between((1, 0, 0), (-1, 0, 0))
+            3.141592653589793
+    """
+    v1_u = unit_vector(v1)
+    v2_u = unit_vector(v2)
+    angle = np.arccos(np.dot(v1_u, v2_u))
+    if np.isnan(angle):
+        if (v1_u == v2_u).all():
+            return 0.0
+        else:
+            return np.pi
+    return angle
 
 
 main()
