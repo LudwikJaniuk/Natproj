@@ -275,14 +275,18 @@ three_der_a = {
 	"HCH": 0.000070322,
 	"CCC": 0.000111,
 	"HOH": 0.000073,
-	"OCO": 0.00005400
+	"OCO": 0.00005400,
+	"COH": 0.000096572,
+	"HCO": 0.000096572
 }
 
 three_der_b = {
 	"HCH": -0.0077106,
 	"CCC": -0.012611,
 	"HOH": -0.008059,
-	"OCO": -0.009721
+	"OCO": -0.009721,
+	"COH": -0.011591,	
+	"HCO": -0.011591
 }
 
 # UTIL FUNCTIONS
@@ -303,16 +307,26 @@ def threeName(t):
 
 def LJ_potential(p):
 	a = pairName(p)
-	r = dist(*p)
+
+	if(a not in best_dist or a not in well_depth):
+		return 0;
+
 	rm = best_dist[a]
 	E = well_depth[a]
+	r = dist(*p)
+
 	return E*((rm/r)**12 - 2*(rm/r)**6)
 
 def LJ_deriv(p):
 	a = pairName(p)
-	r = dist(*p)
+
+	if(a not in best_dist or a not in well_depth):
+		return 0;
+
 	rm = best_dist[a]
 	E = well_depth[a]
+	r = dist(*p)
+	
 	return (12 * E * rm**6 * (r**6 - rm**6)) / r**13
 
 def three_angle(t):
@@ -357,6 +371,5 @@ def angle_between(v1, v2):
         else:
             return np.pi
     return angle
-
 
 main()
