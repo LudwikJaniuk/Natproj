@@ -36,9 +36,22 @@ def main():
 def plotAtoms():
 	fig = plt.figure()
 	ax = fig.add_subplot(111, projection='3d')
+	# ax.set_aspect('equal', 'datalim')
 
 	ps = [a.pos for a in atoms]
 	xs, ys, zs = zip(*ps)
+	X = list(xs)
+	Y = list(ys)
+	Z = list(zs)
+
+	# Create cubic bounding box to simulate equal aspect ratio
+	max_range = np.array([max(X)-min(X), max(Y)-min(Y), max(Z)-min(Z)]).max()
+	Xb = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][0].flatten() + 0.5*(max(X)+min(X))
+	Yb = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][1].flatten() + 0.5*(max(Y)+min(Y))
+	Zb = 0.5*max_range*np.mgrid[-1:2:2,-1:2:2,-1:2:2][2].flatten() + 0.5*(max(Z)+min(Z))
+	# Comment or uncomment following both lines to test the fake bounding box:
+	for xb, yb, zb in zip(Xb, Yb, Zb):
+	   ax.plot([xb], [yb], [zb], 'w')
 
 	ax.scatter(xs, ys, zs, c='r', marker='o')
 
@@ -63,7 +76,7 @@ def crunchAtoms():
 
 def applyAllForces():
 	applyLJForces()
-	applyAngularForces()
+	# applyAngularForces()
 
 def simulate():
 	applyAllForces();
@@ -76,7 +89,7 @@ def logify(n):
 	# So in adding e, we'd be setting out lowest value at 1
 	# But adding 1, we set it at 0.
 	# Which is much better.
-	return math.log(abs(n)+1)*(n/abs(n))
+	return math.log(abs(n)+1)*(n/abs(n)) if n != 0 else 0
 
 def printInfo():
 	for atom in atoms:
@@ -215,7 +228,7 @@ def textAtoms(atoms):
 		if atom.forces:
 			thisAtom.append("Forces:")
 			thisAtom += [" " + str(force) + "\n\t" + str(np.linalg.norm(force)) for force in atom.forces]
-		elif atom.force:
+		elif atom.force != None:
 			thisAtom.append("Force:\n  " + str(atom.force) + "\n  " + str(np.linalg.norm(atom.force)))
 
 		result += thisAtom
@@ -263,7 +276,8 @@ well_depth = {
 	"CH": 0.1332,
 	"CO": 0.0921590301,
 	"CC": 0.1433381031,
-	"HO": 0.1107685941
+	"HO": 0.1107685941,
+	"HH": 0.3501999999
 }
 
 # Avstånd, i ångström
