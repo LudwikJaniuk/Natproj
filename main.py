@@ -7,7 +7,7 @@ import sys
 
 atoms = []
 bindingTreshold = 1.1
-maxForce = 0.05
+maxForce = 0.4
 step = 0.01
 pairs = []
 threes = []
@@ -37,7 +37,12 @@ def setupArgs():
 	group.add_argument("-f", "--noiter", help="Don't iterate, only compute forces in current positions.", action="store_true", default=False)
 	parser.add_argument("-a", "--noang", help="Don't compute angular forces.", action="store_true", default=False)
 	parser.add_argument("-l", "--nolj", help="Don't compute lennard-jones forces.", action="store_true", default=False)
+	parser.add_argument("-H", "--nohydrogenforces", help="Ignore forces between hydrogen atoms", action="store_true", default=False)
 	args = parser.parse_args()
+
+	if args.nohydrogenforces:
+		del well_depth["HH"]
+		del best_dist["HH"]
 
 def plotAtoms():
 	fig = plt.figure()
@@ -71,6 +76,8 @@ def crunchAtoms():
 	makePairs()
 	if args.noiter:
 		applyAllForces()
+		sumForces()
+		limitForces()
 		return textAtoms(atoms)
 	else:
 		print("\nA total of ", len(pairs), "pairs; ", len(threes), " bound triplets")
@@ -86,8 +93,6 @@ def applyAllForces():
 	if not args.noang:
 		applyAngularForces()
 
-	sumForces()
-	limitForces()
 
 def applyLJForces():
 	global pairs
@@ -95,8 +100,7 @@ def applyLJForces():
 		lj = LJ_deriv(pair)
 		if(lj == 0): continue
 		a, b = pair
-		aDir = b.pos - a.pos
-		# A direct approach can cause crazy jumps
+		aDir = unit_vector(b.pos - a.pos)
 		aDir *= lj 
 		# aDir *= logify(lj)
 		bDir = -aDir
@@ -113,29 +117,36 @@ def applyAngularForces():
 	makeThrees()
 	for three in threes:
 		a, c, b = three
-		d = angle_deriv(three)
+		d = -angle_deriv(three)
 		if(d == 0): continue
 		#d = logify(d)
 
 		aRPos = unit_vector(a.pos - c.pos)
 		bRPos = unit_vector(b.pos - c.pos)
 
-		interm = unit_vector(aRPos + bRPos)
+		# interm = unit_vector(aRPos + bRPos)
 
-		aInterm = interm * vlen(aRPos)
-		bInterm = interm * vlen(bRPos)
+		# aInterm = interm * vlen(aRPos)
+		# bInterm = interm * vlen(bRPos)
 
-		aDir = unit_vector(aRPos - aInterm)
-		bDir = unit_vector(bRPos - bInterm)
+		# aDir = unit_vector(aRPos - aInterm)
+		# bDir = unit_vector(bRPos - bInterm)
+
+		o = np.cross(bRPos, aRPos)
+		aDir = unit_vector(np.cross(o, aRPos))
+		bDir = unit_vector(np.cross(bRPos, o))
 
 		aDir *= d
 		bDir *= d
 
 		a.forces.append(aDir)
 		b.forces.append(bDir)
+		c.forces += [-aDir, -bDir]
 
 def simulate():
-	applyAllForces();
+	applyAllForces()
+	sumForces()
+	limitForces()
 	moveAtoms()
 
 def limitForces():
@@ -224,6 +235,13 @@ def textPairs(ps):
 def makePairs():
 	global pairs
 	pairs = pair(atoms)
+	pairs = list(filter(validPair, pairs))
+
+def validPair(p):
+	if args.nohydrogenforces:
+		return pairName(p) != "HH"
+	else:
+		return True
 
 def makeThrees():
 	global threes
