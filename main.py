@@ -2,6 +2,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import numpy as np
 import math
+import sys
 
 iterations = 1000
 atoms = []
@@ -19,9 +20,11 @@ def main():
 	print("")
 	global atoms
 	atoms = makeAtoms(lines)
-	crunchAtoms()
+	
 
-	result = textAtoms(atoms)
+	result = crunchAtoms()
+
+	#result = textAtoms(atoms)
 	print("\nResult:")
 	print(result)
 
@@ -46,22 +49,26 @@ def plotAtoms():
 	plt.show()
 
 def crunchAtoms():
-	atomGroups()
-	print("\nA total of ", len(pairs), "pairs; ", len(threes), " bound triplets")
+	makePairs()
+	if "--forces" in sys.argv:
+		applyAllForces()
+		return textAtoms(atoms)
+	else:
+		print("\nA total of ", len(pairs), "pairs; ", len(threes), " bound triplets")
 
-	for _ in range(iterations):
-		simulate()
+		for _ in range(iterations):
+			simulate()
+
+		return textAtoms(atoms)
+
+def applyAllForces():
+	applyLJForces()
+	applyAngularForces()
 
 def simulate():
-	clearForces()
-	applyLJForces()
-	makeThrees()
-	applyAngularForces()
+	applyAllForces();
 	sumForces()
 	moveAtoms()
-	# printPairs(pairs)
-	# print("")
-	# printInfo()
 
 def logify(n):
 	# Why does adding e not work better? SOLVED
@@ -78,13 +85,10 @@ def printInfo():
 			print(force, "Mag: ", np.linalg.norm(force))
 		print("Total: ", atom.force, np.linalg.norm(atom.force))
 
-def clearForces():
-	for atom in atoms:
-		atom.forces = []
-
 def sumForces():
 	for atom in atoms:
 		atom.force = sum(atom.forces)
+		atom.forces = []
 
 def applyLJForces():
 	global pairs
@@ -105,6 +109,7 @@ def applyLJForces():
 		# print(len(a.forces), len(b.forces), "\n")
 
 def applyAngularForces():
+	makeThrees()
 	for three in threes:
 		a, _, b = three
 		d = angle_deriv(three)
@@ -166,11 +171,9 @@ def printPairs(ps):
 	stringed = [strPair(pair) for pair in ps]
 	print(*stringed, sep="\n")
 
-def atomGroups():
+def makePairs():
 	global pairs
-
 	pairs = pair(atoms)
-	makeThrees()
 
 def makeThrees():
 	global threes
@@ -195,7 +198,7 @@ def dist(a, b):
 def parseRawInput(s):
 	lines = s.split("\n")
 	lines = [line.split() for line in lines]
-	lines = [words for words in lines if words[0][0] != '#']
+	lines = [words for words in lines if words and words[0] and words[0][0] != '#']
 	print(str(len(lines)) + " lines of input")
 	return lines
 
@@ -205,7 +208,17 @@ def makeAtoms(lines):
 	return result
 
 def textAtoms(atoms):
-	result = [str(atom) + " " + str(np.linalg.norm(atom.force)) for atom in atoms]
+	result = []
+	for atom in atoms:
+		thisAtom = []
+		thisAtom.append(str(atom))
+		if atom.forces:
+			thisAtom.append("Forces:")
+			thisAtom += [" " + str(force) + "\n\t" + str(np.linalg.norm(force)) for force in atom.forces]
+		elif atom.force:
+			thisAtom.append("Force:\n  " + str(atom.force) + "\n  " + str(np.linalg.norm(atom.force)))
+
+		result += thisAtom
 	return "\n".join(result)
 
 # def lennard_jones(a, b):
@@ -290,6 +303,13 @@ three_der_b = {
 }
 
 # UTIL FUNCTIONS
+
+def printList(os):
+	head, *tail = os
+	print("[ ", head, end="")
+	for o in os:
+		print("\n, ", o, end="")
+	print(" ]")
 
 def vector3(x, y ,z):
 	return np.array([float(x), float(y), float(z)])
