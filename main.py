@@ -13,7 +13,23 @@ threes = []
 args = {}
 
 def main():
+	setupArgs()
+
+	s = ""
+	with open("data.txt", "r") as f:
+		s = f.read()
+	makeAtoms(parseRawInput(s))
+	
+	result = crunchAtoms()
+
+	print("\nResult:")
+	print(result)
+
+	plotAtoms()
+
+def setupArgs():
 	global args
+
 	parser = argparse.ArgumentParser(description="Simulate atoms with regard to Lennard-Jones potentials and angular spring potentials")
 	group = parser.add_mutually_exclusive_group()
 	group.add_argument("-i", "--iterations", help="Manually set the amount of iterations.", type=int, default=1000)
@@ -21,35 +37,6 @@ def main():
 	parser.add_argument("-a", "--noang", help="Don't compute angular forces.", action="store_true", default=False)
 	parser.add_argument("-l", "--nolj", help="Don't compute lennard-jones forces.", action="store_true", default=False)
 	args = parser.parse_args()
-
-	s = ""
-	with open("data.txt", "r") as f:
-		s = f.read()
-	lines = parseRawInput(s)
-	print("")
-	global atoms
-	atoms = makeAtoms(lines)
-	
-
-	result = crunchAtoms()
-
-	#result = textAtoms(atoms)
-	print("\nResult:")
-	print(result)
-
-	# print("\nPairs:")
-	# textPairs(pairs)
-
-	print("Recognized options:")
-	if args.noang:
-		print("\tNO ANGULAR FORCES")
-	if args.noiter:
-		print("\tJUST LIST FORCES")
-	if args.nolj:
-		print("\tNO LENNARD-JONES FORCES")
-
-
-	plotAtoms()
 
 def plotAtoms():
 	fig = plt.figure()
@@ -151,7 +138,7 @@ def applyAngularForces():
 		#d = logify(d)
 
 		aDir = b.pos - a.pos
-		aDir *= logify(d)
+		# aDir *= logify(d)
 		bDir = -aDir
 
 		a.forces.append(aDir)
@@ -240,9 +227,9 @@ def parseRawInput(s):
 	return lines
 
 def makeAtoms(lines):
-	result = [Atom(words[0], vector3(words[1], words[2], words[3])) for words in lines]
-	print(str(len(result)) + " Atoms registered")
-	return result
+	global atoms
+	atoms = [Atom(words[0], vector3(words[1], words[2], words[3])) for words in lines]
+	print(str(len(atoms)) + " Atoms registered")
 
 def textAtoms(atoms):
 	result = ["Atoms:"]
