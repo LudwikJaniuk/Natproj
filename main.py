@@ -7,6 +7,7 @@ import sys
 
 atoms = []
 bindingTreshold = 1.1
+maxForce = 0.5
 step = 0.01
 pairs = []
 threes = []
@@ -60,9 +61,9 @@ def plotAtoms():
 
 	ax.scatter(xs, ys, zs, c='r', marker='o')
 
-	# ax.set_xlabel('X Label')
-	# ax.set_ylabel('Y Label')
-	# ax.set_zlabel('Z Label')
+	ax.set_xlabel('X')
+	ax.set_ylabel('Y')
+	ax.set_zlabel('Z')
 
 	plt.show()
 
@@ -85,10 +86,21 @@ def applyAllForces():
 	if not args.noang:
 		applyAngularForces()
 
+	sumForces()
+	limitForces()
+
 def simulate():
 	applyAllForces();
-	sumForces()
 	moveAtoms()
+
+def limitForces():
+	global atoms
+	largestForce = max([np.linalg.norm(atom.force) for atom in atoms])
+	if largestForce > maxForce:
+		limitFactor = largestForce / maxForce
+		for atom in atoms:
+			atom.force /= limitFactor
+
 
 def logify(n):
 	# Why does adding e not work better? SOLVED
@@ -119,7 +131,7 @@ def applyLJForces():
 		aDir = b.pos - a.pos
 		# A direct approach can cause crazy jumps
 		# aDir *= lj 
-		aDir *= logify(lj)
+		# aDir *= logify(lj)
 		bDir = -aDir
 
 		# print(a, b)
@@ -144,12 +156,10 @@ def applyAngularForces():
 		a.forces.append(aDir)
 		b.forces.append(bDir)
 
-
-
 def moveAtoms():
 	for atom in atoms:
 		print(atom.pos, atom.force)
-		atom.pos += atom.force * step
+		atom.pos += atom.force# * step
 
 def pair(l):
 	if(len(l) > 1):
@@ -175,6 +185,10 @@ def textThrees(ths):
 def validTriple(t):
 	(a, b), snd = t
 	return a in snd or b in snd
+
+def validThree(t):
+	_, c, _ = t
+	return c.name != "H"
 
 def three(t):
 	(a, b), (c, d) = t
@@ -206,11 +220,7 @@ def makeThrees():
 	possibleBoundTriples = pair(boundPairs)
 	boundTriples = list(filter(validTriple, possibleBoundTriples))
 	boundThrees = toThrees(boundTriples)
-
-	# print("\nBound Threes: ")
-	# textThrees(boundThrees)
-
-	threes = boundThrees
+	threes = list(filter(validThree, boundThrees))
 
 def isBound_p(p):
 	a, b = p
@@ -398,7 +408,6 @@ def angle_deriv(t):
 	b = three_der_b[nm]
 	x = three_angle(t)
 	return a*x + b
-
 
 # SRC: http://stackoverflow.com/questions/2827393/angles-between-two-n-dimensional-vectors-in-python
 def unit_vector(vector):
