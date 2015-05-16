@@ -7,7 +7,7 @@ import sys
 
 atoms = []
 bindingTreshold = 1.1
-maxForce = 0.4
+maxForce = 0.01
 step = 0.01
 pairs = []
 threes = []
@@ -36,7 +36,8 @@ def setupArgs():
 	group.add_argument("-i", "--iterations", help="Manually set the amount of iterations.", type=int, default=1000)
 	group.add_argument("-f", "--noiter", help="Don't iterate, only compute forces in current positions.", action="store_true", default=False)
 	parser.add_argument("-a", "--noang", help="Don't compute angular forces.", action="store_true", default=False)
-	parser.add_argument("-l", "--nolj", help="Don't compute lennard-jones forces.", action="store_true", default=False)
+	parser.add_argument("-l", "--uselimit", help="Use Mats limiting.", action="store_true", default=False)
+	parser.add_argument("-j", "--nolj", help="Don't compute lennard-jones forces.", action="store_true", default=False)
 	parser.add_argument("-H", "--nohydrogenforces", help="Ignore forces between hydrogen atoms", action="store_true", default=False)
 	args = parser.parse_args()
 
@@ -76,8 +77,7 @@ def crunchAtoms():
 	makePairs()
 	if args.noiter:
 		applyAllForces()
-		sumForces()
-		limitForces()
+		postProcessForces()
 		return textAtoms(atoms)
 	else:
 		print("\nA total of ", len(pairs), "pairs; ", len(threes), " bound triplets")
@@ -101,8 +101,11 @@ def applyLJForces():
 		if(lj == 0): continue
 		a, b = pair
 		aDir = unit_vector(b.pos - a.pos)
-		aDir *= lj 
-		# aDir *= logify(lj)
+		print("LJ: ", lj)
+		if args.uselimit:
+			aDir *= lj*step
+		else:
+			aDir *= logify(lj)/100
 		bDir = -aDir
 
 		# print(a, b)
@@ -143,10 +146,14 @@ def applyAngularForces():
 		b.forces.append(bDir)
 		c.forces += [-aDir, -bDir]
 
+def postProcessForces():
+	sumForces()
+	if args.uselimit:
+		limitForces()
+
 def simulate():
 	applyAllForces()
-	sumForces()
-	limitForces()
+	postProcessForces()
 	moveAtoms()
 
 def limitForces():
