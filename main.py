@@ -30,8 +30,8 @@ def main():
 	print("\nResult:")
 	print(result)
 
-	print("\nPairs:")
-	printPairs(pairs)
+	# print("\nPairs:")
+	# textPairs(pairs)
 
 	print("Recognized options:")
 	if angleArg in sys.argv:
@@ -168,9 +168,10 @@ def strThree(th):
 	a, c, b = th
 	return a.name + "--" + c.name + "--" + b.name
 
-def printThrees(ths):
+def textThrees(ths):
 	stringed = [strThree(three) for three in ths]
-	print(*stringed, sep="\n")
+	#print(*stringed, sep="\n")
+	return "\n".join(stringed)
 
 def validTriple(t):
 	(a, b), snd = t
@@ -190,9 +191,10 @@ def three(t):
 def toThrees(ts):
 	return [three(t) for t in ts]
 
-def printPairs(ps):
+def textPairs(ps):
 	stringed = [strPair(pair) for pair in ps]
-	print(*stringed, sep="\n")
+	#print(*stringed, sep="\n")
+	return "\n".join(stringed)
 
 def makePairs():
 	global pairs
@@ -206,8 +208,8 @@ def makeThrees():
 	boundTriples = list(filter(validTriple, possibleBoundTriples))
 	boundThrees = toThrees(boundTriples)
 
-	print("\nBound Threes: ")
-	printThrees(boundThrees)
+	# print("\nBound Threes: ")
+	# textThrees(boundThrees)
 
 	threes = boundThrees
 
@@ -231,7 +233,7 @@ def makeAtoms(lines):
 	return result
 
 def textAtoms(atoms):
-	result = []
+	result = ["Atoms:"]
 	for atom in atoms:
 		thisAtom = []
 		thisAtom.append(str(atom))
@@ -242,6 +244,11 @@ def textAtoms(atoms):
 			thisAtom.append("Force:\n  " + str(atom.force) + "\n  " + str(np.linalg.norm(atom.force)))
 
 		result += thisAtom
+	result.append("\nPairs:")
+	result.append(textPairs(pairs))
+
+	result.append("\nThrees:")
+	result.append(textThrees(threes))	
 	return "\n".join(result)
 
 # def lennard_jones(a, b):
@@ -301,8 +308,8 @@ best_dist = {
 
 # Avstånd, i ångström
 bind_treshold = {
-	"HH": -1.0973955,
-	"CH": -1.620681,
+	"HH": 1.0973955,
+	"CH": 1.620681,
 	"CC": 2.270866,
 	"CO": -2.1427365,
 	"HO": -1.4190975
@@ -384,6 +391,10 @@ def three_angle(t):
 
 def angle_deriv(t):
 	nm = threeName(t)
+
+	if(nm not in three_der_a or nm not in three_der_b):
+		return 0;
+
 	a = three_der_a[nm]
 	b = three_der_b[nm]
 	x = three_angle(t)
