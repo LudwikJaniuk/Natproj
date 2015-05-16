@@ -4,14 +4,15 @@ import numpy as np
 import math
 import sys
 
-iterations = 1000
+iterations = 10000
 atoms = []
 bindingTreshold = 1.1
 step = 0.01
 pairs = []
 threes = []
-angleArg = "--noangulars"
-forceArg = "--justforces"
+noAngleArg = "--noang"
+noLJArg = "--noLJ"
+noIterateArg = "--noiter"
 
 
 def main():
@@ -34,10 +35,12 @@ def main():
 	# textPairs(pairs)
 
 	print("Recognized options:")
-	if angleArg in sys.argv:
+	if noAngleArg in sys.argv:
 		print("\tNO ANGULAR FORCES")
-	if forceArg in sys.argv:
+	if noIterateArg in sys.argv:
 		print("\tJUST LIST FORCES")
+	if noLJArg in sys.argv:
+		print("\tNO LENNARD-JONES FORCES")
 
 
 	plotAtoms()
@@ -72,7 +75,7 @@ def plotAtoms():
 
 def crunchAtoms():
 	makePairs()
-	if forceArg in sys.argv:
+	if noIterateArg in sys.argv:
 		applyAllForces()
 		return textAtoms(atoms)
 	else:
@@ -84,8 +87,9 @@ def crunchAtoms():
 		return textAtoms(atoms)
 
 def applyAllForces():
-	applyLJForces()
-	if angleArg not in sys.argv:
+	if noLJArg not in sys.argv:
+		applyLJForces()
+	if noAngleArg not in sys.argv:
 		applyAngularForces()
 
 def simulate():
@@ -117,6 +121,7 @@ def applyLJForces():
 	global pairs
 	for pair in pairs:
 		lj = LJ_deriv(pair)
+		if(lj == 0): continue
 		a, b = pair
 		aDir = b.pos - a.pos
 		# A direct approach can cause crazy jumps
@@ -136,6 +141,7 @@ def applyAngularForces():
 	for three in threes:
 		a, _, b = three
 		d = angle_deriv(three)
+		if(d == 0): continue
 		d = logify(d)
 
 		aDir = b.pos - a.pos
