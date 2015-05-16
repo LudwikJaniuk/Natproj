@@ -7,7 +7,7 @@ import sys
 
 atoms = []
 bindingTreshold = 1.1
-maxForce = 0.5
+maxForce = 0.05
 step = 0.01
 pairs = []
 threes = []
@@ -89,13 +89,58 @@ def applyAllForces():
 	sumForces()
 	limitForces()
 
+def applyLJForces():
+	global pairs
+	for pair in pairs:
+		lj = LJ_deriv(pair)
+		if(lj == 0): continue
+		a, b = pair
+		aDir = b.pos - a.pos
+		# A direct approach can cause crazy jumps
+		aDir *= lj 
+		# aDir *= logify(lj)
+		bDir = -aDir
+
+		# print(a, b)
+		# print(len(a.forces), len(b.forces))
+		a.forces.append(aDir)
+		# print(len(a.forces), len(b.forces))
+		b.forces.append(bDir)
+		# print(len(a.forces), len(b.forces), "\n")
+
+def applyAngularForces():
+	print("ng")
+	makeThrees()
+	for three in threes:
+		a, c, b = three
+		d = angle_deriv(three)
+		if(d == 0): continue
+		#d = logify(d)
+
+		aRPos = unit_vector(a.pos - c.pos)
+		bRPos = unit_vector(b.pos - c.pos)
+
+		interm = unit_vector(aRPos + bRPos)
+
+		aInterm = interm * vlen(aRPos)
+		bInterm = interm * vlen(bRPos)
+
+		aDir = unit_vector(aRPos - aInterm)
+		bDir = unit_vector(bRPos - bInterm)
+
+		aDir *= d
+		bDir *= d
+
+		a.forces.append(aDir)
+		b.forces.append(bDir)
+
 def simulate():
 	applyAllForces();
 	moveAtoms()
 
 def limitForces():
 	global atoms
-	largestForce = max([np.linalg.norm(atom.force) for atom in atoms])
+	largestForce = max([vlen(atom.force) for atom in atoms])
 	if largestForce > maxForce:
 		limitFactor = largestForce / maxForce
 		for atom in atoms:
@@ -114,51 +159,18 @@ def printInfo():
 	for atom in atoms:
 		print("\n", atom)
 		for force in atom.forces:
-			print(force, "Mag: ", np.linalg.norm(force))
-		print("Total: ", atom.force, np.linalg.norm(atom.force))
+			print(force, "Mag: ", vlen(force))
+		print("Total: ", atom.force, vlen(atom.force))
 
 def sumForces():
 	for atom in atoms:
 		atom.force = sum(atom.forces)
 		atom.forces = []
 
-def applyLJForces():
-	global pairs
-	for pair in pairs:
-		lj = LJ_deriv(pair)
-		if(lj == 0): continue
-		a, b = pair
-		aDir = b.pos - a.pos
-		# A direct approach can cause crazy jumps
-		# aDir *= lj 
-		# aDir *= logify(lj)
-		bDir = -aDir
-
-		# print(a, b)
-		# print(len(a.forces), len(b.forces))
-		a.forces.append(aDir)
-		# print(len(a.forces), len(b.forces))
-		b.forces.append(bDir)
-		# print(len(a.forces), len(b.forces), "\n")
-
-def applyAngularForces():
-	makeThrees()
-	for three in threes:
-		a, _, b = three
-		d = angle_deriv(three)
-		if(d == 0): continue
-		#d = logify(d)
-
-		aDir = b.pos - a.pos
-		# aDir *= logify(d)
-		bDir = -aDir
-
-		a.forces.append(aDir)
-		b.forces.append(bDir)
 
 def moveAtoms():
 	for atom in atoms:
-		print(atom.pos, atom.force)
+		# print(atom.pos, atom.force)
 		atom.pos += atom.force# * step
 
 def pair(l):
@@ -227,7 +239,7 @@ def isBound_p(p):
 	return dist(a, b) < bind_treshold[pairName(p)]
 
 def dist(a, b):
-	return np.linalg.norm(b.pos - a.pos)
+	return vlen(b.pos - a.pos)
 
 def parseRawInput(s):
 	lines = s.split("\n")
@@ -248,9 +260,9 @@ def textAtoms(atoms):
 		thisAtom.append(str(atom))
 		if atom.forces:
 			thisAtom.append("Forces:")
-			thisAtom += [" " + str(force) + "\n\t" + str(np.linalg.norm(force)) for force in atom.forces]
+			thisAtom += [" " + str(force) + "\n\t" + str(vlen(force)) for force in atom.forces]
 		elif atom.force != None:
-			thisAtom.append("Force:\n  " + str(atom.force) + "\n  " + str(np.linalg.norm(atom.force)))
+			thisAtom.append("Force:\n  " + str(atom.force) + "\n  " + str(vlen(atom.force)))
 
 		result += thisAtom
 	result.append("\nPairs:")
@@ -281,7 +293,7 @@ class Atom:
 		self.forces = []
 
 	# def norm(self):
-	# 	return self.pos/np.linalg.norm(self.pos)
+	# 	return self.pos/vlen(self.pos)
 
 	def __init__(self, _name, _pos):
 		_name = _name.upper()
@@ -302,8 +314,8 @@ well_depth = {
 	"CH": 0.1332,
 	"CO": 0.0921590301,
 	"CC": 0.1433381031,
-	"HO": 0.1107685941,
-	"HH": 0.3501999999
+	"HH": 0.3501999999,
+	"HO": 0.1107685941
 }
 
 # Avstånd, i ångström
@@ -409,10 +421,13 @@ def angle_deriv(t):
 	x = three_angle(t)
 	return a*x + b
 
+def vlen(v):
+	return np.linalg.norm(v)
+
 # SRC: http://stackoverflow.com/questions/2827393/angles-between-two-n-dimensional-vectors-in-python
 def unit_vector(vector):
     """ Returns the unit vector of the vector.  """
-    return vector / np.linalg.norm(vector)
+    return vector / vlen(vector)
 
 # SRC: http://stackoverflow.com/questions/2827393/angles-between-two-n-dimensional-vectors-in-python
 def angle_between(v1, v2):
