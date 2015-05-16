@@ -1,21 +1,27 @@
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import numpy as np
+import argparse
 import math
 import sys
 
-iterations = 10000
 atoms = []
 bindingTreshold = 1.1
 step = 0.01
 pairs = []
 threes = []
-noAngleArg = "--noang"
-noLJArg = "--noLJ"
-noIterateArg = "--noiter"
-
+args = {}
 
 def main():
+	global args
+	parser = argparse.ArgumentParser(description="Simulate atoms with regard to Lennard-Jones potentials and angular spring potentials")
+	group = parser.add_mutually_exclusive_group()
+	group.add_argument("-i", "--iterations", help="Manually set the amount of iterations.", type=int, default=1000)
+	group.add_argument("-f", "--noiter", help="Don't iterate, only compute forces in current positions.", action="store_true", default=False)
+	parser.add_argument("-a", "--noang", help="Don't compute angular forces.", action="store_true", default=False)
+	parser.add_argument("-l", "--nolj", help="Don't compute lennard-jones forces.", action="store_true", default=False)
+	args = parser.parse_args()
+
 	s = ""
 	with open("data.txt", "r") as f:
 		s = f.read()
@@ -35,11 +41,11 @@ def main():
 	# textPairs(pairs)
 
 	print("Recognized options:")
-	if noAngleArg in sys.argv:
+	if args.noang:
 		print("\tNO ANGULAR FORCES")
-	if noIterateArg in sys.argv:
+	if args.noiter:
 		print("\tJUST LIST FORCES")
-	if noLJArg in sys.argv:
+	if args.nolj:
 		print("\tNO LENNARD-JONES FORCES")
 
 
@@ -75,21 +81,21 @@ def plotAtoms():
 
 def crunchAtoms():
 	makePairs()
-	if noIterateArg in sys.argv:
+	if args.noiter:
 		applyAllForces()
 		return textAtoms(atoms)
 	else:
 		print("\nA total of ", len(pairs), "pairs; ", len(threes), " bound triplets")
 
-		for _ in range(iterations):
+		for _ in range(args.iterations):
 			simulate()
 
 		return textAtoms(atoms)
 
 def applyAllForces():
-	if noLJArg not in sys.argv:
+	if not args.nolj:
 		applyLJForces()
-	if noAngleArg not in sys.argv:
+	if not args.noang:
 		applyAngularForces()
 
 def simulate():
@@ -142,7 +148,7 @@ def applyAngularForces():
 		a, _, b = three
 		d = angle_deriv(three)
 		if(d == 0): continue
-		d = logify(d)
+		#d = logify(d)
 
 		aDir = b.pos - a.pos
 		aDir *= logify(d)
