@@ -121,6 +121,7 @@ def applyAngularForces():
 	for three in threes:
 		a, c, b = three
 		d = -angle_deriv(three)
+		d *= step;
 		if(d == 0): continue
 		#d = logify(d)
 
