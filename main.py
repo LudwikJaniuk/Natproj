@@ -10,6 +10,8 @@ bindingTreshold = 1.1
 step = 0.01
 pairs = []
 threes = []
+angleArg = "--noangulars"
+forceArg = "--justforces"
 
 
 def main():
@@ -30,6 +32,13 @@ def main():
 
 	print("\nPairs:")
 	printPairs(pairs)
+
+	print("Recognized options:")
+	if angleArg in sys.argv:
+		print("\tNO ANGULAR FORCES")
+	if forceArg in sys.argv:
+		print("\tJUST LIST FORCES")
+
 
 	plotAtoms()
 
@@ -63,7 +72,7 @@ def plotAtoms():
 
 def crunchAtoms():
 	makePairs()
-	if "--forces" in sys.argv:
+	if forceArg in sys.argv:
 		applyAllForces()
 		return textAtoms(atoms)
 	else:
@@ -76,7 +85,8 @@ def crunchAtoms():
 
 def applyAllForces():
 	applyLJForces()
-	# applyAngularForces()
+	if angleArg not in sys.argv:
+		applyAngularForces()
 
 def simulate():
 	applyAllForces();
