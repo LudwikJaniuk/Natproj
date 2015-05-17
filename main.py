@@ -7,7 +7,7 @@ import sys
 
 atoms = []
 bindingTreshold = 1.1
-maxForce = 0.01
+maxForce = 0.5
 step = 0.01
 pairs = []
 threes = []
@@ -87,11 +87,108 @@ def crunchAtoms():
 
 		return textAtoms(atoms)
 
+
 def applyAllForces():
-	if not args.nolj:
-		applyLJForces()
-	if not args.noang:
-		applyAngularForces()
+	# if not args.nolj:
+	# 	applyLJForces()
+	# if not args.noang:
+	# 	applyAngularForces()
+	applyPositionalForces()
+
+def potential(atom):
+	potentials = 0
+	for oAtom in atoms:
+		if oAtom == atom: continue
+
+		potentials += LJ_potential((atom, oAtom))/2
+	return potentials
+
+def applyPositionalForces():
+	# originalPotentials()
+	for atom in atoms:
+		origPotential = potential(atom)
+		origPos = np.copy(atom.pos)
+
+		atom.pos[0] += step
+		xUpPotential = potential(atom)
+
+		atom.pos = np.copy(origPos)
+		atom.pos[0] -= step
+		xDownPotential = potential(atom)
+
+		atom.pos = np.copy(origPos)
+		atom.pos[1] += step
+		yUpPotential = potential(atom)
+
+		atom.pos = np.copy(origPos)
+		atom.pos[1] -= step
+		yDownPotential = potential(atom)
+
+		atom.pos = np.copy(origPos)
+		atom.pos[2] += step
+		zUpPotential = potential(atom)
+
+		atom.pos = np.copy(origPos)
+		atom.pos[2] -= step
+		zDownPotential = potential(atom)
+
+		atom.pos = np.copy(origPos)
+
+		xUpPotential -= origPotential
+		xDownPotential -= origPotential
+		yUpPotential -= origPotential
+		yDownPotential -= origPotential
+		zUpPotential -= origPotential
+		zDownPotential -= origPotential
+
+		xUpPotential	 *= -1
+		xDownPotential 	*= -1
+		yUpPotential	 *= -1
+		yDownPotential 	*= -1
+		zUpPotential 	*= -1
+		zDownPotential	 *= -1
+
+		print("Deltas: ", xUpPotential	,
+			xDownPotential ,
+			yUpPotential	,
+			yDownPotential ,
+			zUpPotential 	,
+			zDownPotential, origPotential, "\n")
+
+		xUp   = np.array([ 1, 0, 0])
+		xDown = np.array([-1, 0, 0])
+		yUp   = np.array([0,  1, 0])
+		yDown = np.array([0, -1, 0])
+		zUp   = np.array([0,  0, 1])
+		zDown = np.array([0,  0,-1])
+
+		xUp   *= xUpPotential
+		xDown *= xDownPotential
+		yUp   *= yUpPotential
+		yDown *= yDownPotential
+		zUp   *= zUpPotential
+		zDown *= zDownPotential
+
+		total =(xUp   +
+				xDown +
+				yUp   +
+				yDown +
+				zUp   +
+				zDown)
+
+		atom.forces.append(total)
+
+		print(atom.name, "Pot: ", potential(atom), total)
+
+
+
+# def originalPotentials():
+# 	for pair in pairs:
+# 		lj = LJ_potential(pair)
+# 		a, b = pair
+# 		lj2 = lj/2
+# 		a.potentials.append(lj2)
+# 		b.potentials.append(lj2)
 
 
 def applyLJForces():
@@ -315,6 +412,8 @@ class Atom:
 	pos = np.array([0, 0, 0])
 	forces = []
 	force = None
+	potentials = []
+	potential = None
 	def clearForces(self):
 		self.forces = []
 
@@ -452,28 +551,28 @@ def vlen(v):
 
 # SRC: http://stackoverflow.com/questions/2827393/angles-between-two-n-dimensional-vectors-in-python
 def unit_vector(vector):
-    """ Returns the unit vector of the vector.  """
-    return vector / vlen(vector)
+	""" Returns the unit vector of the vector.  """
+	return vector / vlen(vector)
 
 # SRC: http://stackoverflow.com/questions/2827393/angles-between-two-n-dimensional-vectors-in-python
 def angle_between(v1, v2):
-    """ Returns the angle in radians between vectors 'v1' and 'v2'::
+	""" Returns the angle in radians between vectors 'v1' and 'v2'::
 
-            >>> angle_between((1, 0, 0), (0, 1, 0))
-            1.5707963267948966
-            >>> angle_between((1, 0, 0), (1, 0, 0))
-            0.0
-            >>> angle_between((1, 0, 0), (-1, 0, 0))
-            3.141592653589793
-    """
-    v1_u = unit_vector(v1)
-    v2_u = unit_vector(v2)
-    angle = np.arccos(np.dot(v1_u, v2_u))
-    if np.isnan(angle):
-        if (v1_u == v2_u).all():
-            return 0.0
-        else:
-            return np.pi
-    return angle
+			>>> angle_between((1, 0, 0), (0, 1, 0))
+			1.5707963267948966
+			>>> angle_between((1, 0, 0), (1, 0, 0))
+			0.0
+			>>> angle_between((1, 0, 0), (-1, 0, 0))
+			3.141592653589793
+	"""
+	v1_u = unit_vector(v1)
+	v2_u = unit_vector(v2)
+	angle = np.arccos(np.dot(v1_u, v2_u))
+	if np.isnan(angle):
+		if (v1_u == v2_u).all():
+			return 0.0
+		else:
+			return np.pi
+	return angle
 
 main()
