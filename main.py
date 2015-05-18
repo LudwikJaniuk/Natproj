@@ -6,7 +6,7 @@ import math
 import sys
 
 atoms = []
-bindingTreshold = 1.1
+bindingTreshold = 1.6
 maxForce = 0.01
 step = 0.01
 pairs = []
@@ -116,17 +116,31 @@ def applyLJForces():
 		# print(len(a.forces), len(b.forces), "\n")
 
 def applyAngularForces():
-	print("ng")
 	makeThrees()
 	for three in threes:
+		print("ng")
+		if three_angle(three) == 180:
+			continue;
+
 		a, c, b = three
 		d = -angle_deriv(three)
-		d *= step;
-		if(d == 0): continue
-		#d = logify(d)
 
-		aRPos = unit_vector(a.pos - c.pos)
-		bRPos = unit_vector(b.pos - c.pos)
+		aRPos = a.pos - c.pos
+		bRPos = b.pos - c.pos
+
+
+		aDist = vlen(aRPos)
+		bDist = vlen(bRPos)
+
+		aForce = toAngstromForce(d, aDist)
+		bForce = toAngstromForce(d, bDist)
+
+		if args.uselimit:
+			aForce *= step
+			bForce *= step
+		else:
+			aForce = logify(aForce)
+			bForce = logify(bForce)
 
 		# interm = unit_vector(aRPos + bRPos)
 
@@ -140,8 +154,8 @@ def applyAngularForces():
 		aDir = unit_vector(np.cross(o, aRPos))
 		bDir = unit_vector(np.cross(bRPos, o))
 
-		aDir *= d
-		bDir *= d
+		aDir *= aForce
+		bDir *= bForce
 
 		a.forces.append(aDir)
 		b.forces.append(bDir)
@@ -209,6 +223,7 @@ def strThree(th):
 	return a.name + "--" + c.name + "--" + b.name
 
 def textThrees(ths):
+	print("LENGOFTHREES: ", len(threes))
 	stringed = [strThree(three) for three in ths]
 	#print(*stringed, sep="\n")
 	return "\n".join(stringed)
@@ -220,6 +235,9 @@ def validTriple(t):
 def validThree(t):
 	_, c, _ = t
 	return c.name != "H"
+
+def toAngstromForce(degForce, dist):
+	return 2*math.sin(math.radians(0.5))*dist
 
 def three(t):
 	(a, b), (c, d) = t
@@ -259,6 +277,7 @@ def makeThrees():
 	boundTriples = list(filter(validTriple, possibleBoundTriples))
 	boundThrees = toThrees(boundTriples)
 	threes = list(filter(validThree, boundThrees))
+	print("MADE ", len(threes), " THREES")
 
 def isBound_p(p):
 	a, b = p
